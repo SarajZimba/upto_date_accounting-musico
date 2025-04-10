@@ -288,13 +288,38 @@ $('#id_product').select2({
   function removeItemFromBill(event){
     const elementIdTagArray = event.id.split('_')
     const id = elementIdTagArray[elementIdTagArray.length -1]
-    const ind = selectedItemId.indexOf(id)
-    selectedItemId.splice(ind,1)
+    // const ind = selectedItemId.indexOf(id)
+    // selectedItemId.splice(ind,1)
     
-    const tableBody = document.querySelector('#bill_item');
-    const tableRow = document.querySelector(`#id_bill_item_${id}`)
-    tableBody.removeChild(tableRow)
+    // const tableBody = document.querySelector('#bill_item');
+    // const tableRow = document.querySelector(`#id_bill_item_${id}`)
+    // tableBody.removeChild(tableRow)
+    // document.getElementById('product-id-list').value = selectedItemId.toString()
+
+    // Remove from selected items
+    const ind = selectedItemId.indexOf(id)
+    if (ind > -1) {
+        selectedItemId.splice(ind, 1)
+    }
+    
+    // Clean up all related data
+    delete newCreatedItems[id]
+    delete newCategoryItems[id]
+    delete newLedgerItems[id]
+    
+    // Update hidden fields
     document.getElementById('product-id-list').value = selectedItemId.toString()
+    document.getElementById('product_taxable_info').value = JSON.stringify(newCreatedItems)
+    document.getElementById('product_category_info').value = JSON.stringify(newCategoryItems)
+    document.getElementById('ledger-id-list').value = JSON.stringify(newLedgerItems)
+    
+    // Remove from DOM and recalculate
+    const tableBody = document.querySelector('#bill_item')
+    const tableRow = document.querySelector(`#id_bill_item_${id}`)
+    if (tableRow) {
+        tableBody.removeChild(tableRow)
+    }
+
     calculatePrices()
   }
 
@@ -554,16 +579,29 @@ $('#id_product').select2({
     let itemLedger = e.getAttribute('id').split('_')[2]
     let total = parseFloat($(`#id_bill_item_total_${itemLedger}`).attr('data-total'));
     // let total1 = parseFloat($(`#ledger_select_${itemLedger}`).attr('data-total'));
-    let new_total = latestTotal
-    console.log(new_total)
-    console.log(e.value)
-    console.log(total)
+    // let new_total = latestTotal
+    // console.log(new_total)
+    // console.log(e.value)
+    // console.log(total)
 
-    // newLedgerItems[itemLedger] = e.value
-    newLedgerItems[itemLedger] ={ ledgerId:e.value, 
-                                    total:total,
-                                    total1:new_total
+    // // newLedgerItems[itemLedger] = e.value
+    // newLedgerItems[itemLedger] ={ ledgerId:e.value, 
+    //                                 total:total,
+    //                                 total1:new_total
+    // }
+
+    if (e.value === '------') {
+        // If ledger is cleared, remove the entry
+        delete newLedgerItems[itemLedger]
+    } else {
+        // Otherwise update the entry
+        newLedgerItems[itemLedger] = {
+            ledgerId: e.value,
+            total: total,
+            total1: latestTotal
+        }
     }
+
     document.getElementById('ledger-id-list').value = JSON.stringify(newLedgerItems)
   }
 
