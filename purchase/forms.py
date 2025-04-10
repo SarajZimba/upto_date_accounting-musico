@@ -110,6 +110,9 @@ class AssetPurchaseForm(BaseForm, forms.ModelForm):
     vendor = forms.ModelChoiceField(
         queryset=Vendor.objects.all()
     )
+
+    bill_date = forms.DateField(required=False,initial=today_ymd )
+
     # debit_account =  forms.ModelChoiceField(queryset=AccountLedger.objects.filter(account_chart=AccountChart.objects.filter(ledger="Fixed Assets").first()))
     
 
