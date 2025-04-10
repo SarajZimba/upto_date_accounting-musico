@@ -1062,6 +1062,17 @@ class ProfitAndLoss(IsAdminMixin, TemplateView):
                 account_chart__account_type="Revenue", 
                 created_at__range=[from_date, to_date]
             )
+            
+            liabilities = CumulativeLedger.objects.filter(
+                ~Q(total_value=0), 
+                account_chart__account_type="Liability", 
+                created_at__range=[from_date, to_date]
+            )
+            assets = CumulativeLedger.objects.filter(
+                ~Q(total_value=0), 
+                account_chart__account_type="Asset", 
+                created_at__range=[from_date, to_date]
+            )
         else:
             expenses = CumulativeLedger.objects.filter(
                 ~Q(total_value=0), 
@@ -1071,8 +1082,15 @@ class ProfitAndLoss(IsAdminMixin, TemplateView):
                 ~Q(total_value=0), 
                 account_chart__account_type="Revenue"
             )
+            liabilities = CumulativeLedger.objects.filter(
+                ~Q(total_value=0), 
+                account_chart__account_type="Liability"
+            )
+            assets = CumulativeLedger.objects.filter(
+                ~Q(total_value=0), 
+                account_chart__account_type="Asset"
+            )
 
-        # Aggregating results
         expense_aggregated = expenses.values('ledger_id','ledger_name').annotate(
             total_value=Sum('value_changed')
         ).order_by('ledger_name')
@@ -1080,22 +1098,33 @@ class ProfitAndLoss(IsAdminMixin, TemplateView):
         revenue_aggregated = revenues.values('ledger_id','ledger_name').annotate(
             total_value=Sum('value_changed')
         ).order_by('ledger_name')
+        liability_aggregated = liabilities.values('ledger_id','ledger_name').annotate(
+            total_value=Sum('value_changed')
+        ).order_by('ledger_name')
+        asset_aggregated = assets.values('ledger_id','ledger_name').annotate(
+            total_value=Sum('value_changed')
+        ).order_by('ledger_name')
 
         # Convert querysets to lists
         expense_list = list(expense_aggregated)
         revenue_list = list(revenue_aggregated)
+        liability_list = list(liability_aggregated)
+        asset_list = list(asset_aggregated)
 
         print(expense_list)
-        # print(revenue_list)
-        expense_list, expense_total, revenue_list, revenue_total = ProfitAndLossData.get_data(revenues=revenue_list, expenses=expense_list)
+        expense_list, expense_total, revenue_list, revenue_total, liability_list, liability_total, asset_list, asset_total = ProfitAndLossData.get_data(revenues=revenue_list, expenses=expense_list, liabilities=liability_list, assets=asset_list)
 
 
         context['expenses'] = expense_list
         context['expense_total'] = expense_total
         context['revenues'] = revenue_list
         context['revenue_total'] = revenue_total
+        context['liabilities'] = liability_list
+        context['liability_total'] = liability_total
+        context['assets'] = asset_list
+        context['asset_total'] = asset_total
         
-        differenceForProfitorLoss = revenue_total - expense_total
+        differenceForProfitorLoss = revenue_total + asset_total - expense_total - liability_total
 
         context['differenceForProfitorLoss'] = differenceForProfitorLoss
 
@@ -1206,162 +1235,8 @@ class PartyLedgerView(View):
 
         return render(request, self.template_name, context)
     
-# class PartyLedgerJournalView(CreateView):
-#     template_name = 'accounting/partyledgerjournal.html'
+#for paying payment debit ledgers
 
-#     def get(self, request, ledger_id):
-     
-#         paid_from = AccountLedger.objects.filter(account_chart__group='Liquid Asset')
-        
-#         # search_query = request.GET.get('ledger_search', '')
-#         paying_ledger = AccountLedger.objects.get(id=ledger_id)
-      
-        
-
-#         context = {
-#             'ledger': paying_ledger,
-#             'paid_from':paid_from
-          
-#         }
-
-#         return render(request, self.template_name, context)
-    
-#     def post(self, request, ledger_id):
-
-#         debit_ledger1 = request.POST.get('debit_ledger')
-#         selected_ledger = AccountLedger.objects.get(id=debit_ledger1)
-#         # print(selected_ledger)
-#         debit_ledger1 = request.POST.get('debit_ledger')
-#         # print(debit_ledger1)
-#         amount = request.POST.get('amount')
-#         particular = request.POST.get('particular')
-#         # journal_entry = TblJournalEntry.objects.create(employee_name=request.user.username, journal_total=amount)
-#         # print(journal_entry)
-#         entry_date = datetime.now()
-#         journal_entry = TblJournalEntry.objects.create(employee_name=request.user.username, journal_total=amount, entry_date=entry_date.date())
-       
-#         debit_ledger_id = ledger_id
-#         debit_ledger = AccountLedger.objects.get(pk=debit_ledger_id)
-#         print(debit_ledger_id)
-
-#         debit_particular = particular
-#         debit_amount = Decimal(amount)
-#         debit_ledger_type = debit_ledger.account_chart.account_type
-   
-
-#         TblDrJournalEntry.objects.create(ledger=debit_ledger, journal_entry=journal_entry, particulars=debit_particular, debit_amount=debit_amount, paidfrom_ledger=selected_ledger)
-#         if debit_ledger_type in ['Asset', 'Expense']:
-#             debit_ledger.total_value =debit_ledger.total_value + debit_amount
-#             debit_ledger.save()
-#             update_cumulative_ledger_bill(debit_ledger, entry_date)
-                
-
-#         elif debit_ledger_type in ['Liability', 'Revenue', 'Equity']:
-#             debit_ledger.total_value = debit_ledger.total_value - debit_amount
-#             debit_ledger.save()
-#             update_cumulative_ledger_bill(debit_ledger, entry_date)    
-
-        
-#         credit_ledger_id = debit_ledger1
-#         # print(credit_ledger_id)
-#         # credit_ledger1 = AccountLedger.objects.get(pk=debit_ledger)
-#         # print(credit_ledger1)
-#         credit_ledger = AccountLedger.objects.get(id=credit_ledger_id)
-#         print(credit_ledger)
-#         credit_particular = particular
-#         credit_amount = D(amount)
-#         credit_ledger_type = credit_ledger.account_chart.account_type
-#         TblCrJournalEntry.objects.create(ledger=credit_ledger, journal_entry=journal_entry, particulars=credit_particular, credit_amount=credit_amount, paidfrom_ledger=selected_ledger)
-#         if credit_ledger_type in ['Asset', 'Expense']:
-#             credit_ledger.total_value = credit_ledger.total_value - credit_amount
-#             credit_ledger.save()
-#             update_cumulative_ledger_bill(credit_ledger, entry_date)
-         
-#         elif credit_ledger_type in ['Liability', 'Revenue', 'Equity']:
-#             credit_ledger.total_value = credit_ledger.total_value + credit_amount
-#             credit_ledger.save()
-#             update_cumulative_ledger_bill(credit_ledger, entry_date)
-#         current_page_url = reverse('ledger_detail', args=[ledger_id]) + f'?debit_ledger1={debit_ledger1}'
-        
-    
-#         return redirect(current_page_url)
-    
-    
-# class PartyLedgerJournal1View(CreateView):
-#     template_name = 'accounting/partyledgerjournal.html'
-
-#     def get(self, request, ledger_id):
-     
-#         paid_from = AccountLedger.objects.filter(account_chart__group='Liquid Asset')
-        
-#         # search_query = request.GET.get('ledger_search', '')
-#         paying_ledger = AccountLedger.objects.get(id=ledger_id)
-      
-        
-
-#         context = {
-#             'ledger': paying_ledger,
-#             'paid_from':paid_from
-          
-#         }
-
-#         return render(request, self.template_name, context)
-    
-#     def post(self, request, ledger_id):
-        
-
-#         debit_ledger1 = request.POST.get('debit_ledger')
-#         selected_ledger = AccountLedger.objects.get(id=debit_ledger1)
-#         # print(selected_ledger)
-
-        
-#         amount = request.POST.get('amount')
-#         particular = request.POST.get('particular')
-#         # journal_entry = TblJournalEntry.objects.create(employee_name=request.user.username, journal_total=amount)
-#         # print(journal_entry)
-#         entry_date = datetime.now()
-#         journal_entry = TblJournalEntry.objects.create(employee_name=request.user.username, journal_total=amount, entry_date=entry_date.date())
-       
-#         # debit_ledger_id = ledger_id
-#         debit_ledger = AccountLedger.objects.get(pk=debit_ledger1)
-     
-
-#         debit_particular = particular
-#         debit_amount = Decimal(amount)
-#         debit_ledger_type = debit_ledger.account_chart.account_type
-   
-
-#         TblDrJournalEntry.objects.create(ledger=debit_ledger, journal_entry=journal_entry, particulars=debit_particular, debit_amount=debit_amount, paidfrom_ledger=selected_ledger)
-#         if debit_ledger_type in ['Asset', 'Expense']:
-#             debit_ledger.total_value =debit_ledger.total_value + debit_amount
-#             debit_ledger.save()
-#             update_cumulative_ledger_bill(debit_ledger, entry_date) 
-
-#         elif debit_ledger_type in ['Liability', 'Revenue', 'Equity']:
-#             debit_ledger.total_value = debit_ledger.total_value - debit_amount
-#             debit_ledger.save()
-#             update_cumulative_ledger_bill(debit_ledger, entry_date)    
-        
-#         credit_ledger_id = ledger_id
-#         # print(credit_ledger_id)
-#         # credit_ledger1 = AccountLedger.objects.get(pk=debit_ledger)
-#         # print(credit_ledger1)
-#         credit_ledger = AccountLedger.objects.get(id=credit_ledger_id)
-#         # print(credit_ledger)
-#         credit_particular = particular
-#         credit_amount = D(amount)
-#         credit_ledger_type = credit_ledger.account_chart.account_type
-#         TblCrJournalEntry.objects.create(ledger=credit_ledger, journal_entry=journal_entry, particulars=credit_particular, credit_amount=credit_amount, paidfrom_ledger=selected_ledger)
-#         if credit_ledger_type in ['Asset', 'Expense']:
-#             credit_ledger.total_value = credit_ledger.total_value - credit_amount
-#             credit_ledger.save()
-#             update_cumulative_ledger_bill(credit_ledger, entry_date)
-#         elif credit_ledger_type in ['Liability', 'Revenue', 'Equity']:
-#             credit_ledger.total_value = credit_ledger.total_value + credit_amount
-#             credit_ledger.save()
-#             update_cumulative_ledger_bill(credit_ledger, entry_date)
-#         current_page_url = reverse('ledger_detail', args=[ledger_id]) + f'?debit_ledger1={debit_ledger1}'
-#         return redirect(current_page_url)
 
 from bill.utils import update_cumulative_ledger_partyledger 
 class PartyLedgerJournalView(CreateView):
@@ -1388,6 +1263,8 @@ class PartyLedgerJournalView(CreateView):
 
         debit_ledger1 = request.POST.get('debit_ledger')
         selected_ledger = AccountLedger.objects.get(id=debit_ledger1)
+        debit_sub_ledger1 = request.POST.get('subledger')
+        print(f" data {request.POST}")
         # print(selected_ledger)
         debit_ledger1 = request.POST.get('debit_ledger')
         # print(debit_ledger1)
@@ -1446,10 +1323,19 @@ class PartyLedgerJournalView(CreateView):
 
         current_page_url = reverse('ledger_detail', args=[ledger_id]) + f'?debit_ledger1={debit_ledger1}'
         
-    
+        if debit_sub_ledger1:
+            selected_sub_ledger = AccountSubLedger.objects.get(id=debit_sub_ledger1)
+            print(f"{selected_sub_ledger}- {selected_sub_ledger.sub_ledger_name}")
+            prev_value = selected_sub_ledger.total_value
+            credit_subledgertracking = AccountSubLedgerTracking.objects.create(subledger = selected_sub_ledger, prev_amount= prev_value, journal=journal_entry)
+            selected_sub_ledger.total_value -= decimal.Decimal(D(amount))
+            selected_sub_ledger.save()
+            credit_subledgertracking.new_amount=selected_sub_ledger.total_value
+            credit_subledgertracking.value_changed = selected_sub_ledger.total_value - prev_value
+            credit_subledgertracking.save()
         return redirect(current_page_url)
     
-    
+#for receiving payment debit ledgers
 class PartyLedgerJournal1View(CreateView):
     template_name = 'accounting/partyledgerjournal.html'
 
@@ -1476,7 +1362,9 @@ class PartyLedgerJournal1View(CreateView):
         debit_ledger1 = request.POST.get('debit_ledger')
         selected_ledger = AccountLedger.objects.get(id=debit_ledger1)
         # print(selected_ledger)
+        debit_sub_ledger1 = request.POST.get('subledger')
 
+        print(f" data {request.POST}")
         
         amount = request.POST.get('amount')
         particular = request.POST.get('particular')
@@ -1532,6 +1420,16 @@ class PartyLedgerJournal1View(CreateView):
             update_cumulative_ledger_partyledger(debit_ledger, entry_date, journal_entry)
 
         current_page_url = reverse('ledger_detail', args=[ledger_id]) + f'?debit_ledger1={debit_ledger1}'
+
+        if debit_sub_ledger1:
+            selected_sub_ledger = AccountSubLedger.objects.get(id=debit_sub_ledger1)
+            prev_value = selected_sub_ledger.total_value
+            credit_subledgertracking = AccountSubLedgerTracking.objects.create(subledger = selected_sub_ledger, prev_amount= prev_value, journal=journal_entry)
+            selected_sub_ledger.total_value += decimal.Decimal(D(amount))
+            selected_sub_ledger.save()
+            credit_subledgertracking.new_amount=selected_sub_ledger.total_value
+            credit_subledgertracking.value_changed = selected_sub_ledger.total_value - prev_value
+            credit_subledgertracking.save()
         return redirect(current_page_url)
     
 from datetime import datetime, timedelta
