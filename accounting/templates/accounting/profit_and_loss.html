@@ -53,7 +53,7 @@
                     </tbody>
                 </table>
 
-                    <table class="table align-middle table-row-dashed fs-6 gy-5 dataTable no-footer" id="kt_customers_table">
+                    <!-- <table class="table align-middle table-row-dashed fs-6 gy-5 dataTable no-footer" id="kt_customers_table">
                         <thead class="bg-secondary">
                             <th class="col-7">Assets</th>
                             <th>Amount</th>
@@ -64,7 +64,7 @@
                             <tr>
                                 <td><a href="{% url 'ledger_detail' asset.ledger_id %}">{{asset.title}}</a></td>
                 
-                                <!--<td>{{asset.title}}</td>-->
+
                                 <td>{{asset.amount|intcomma}}</td>
                             </tr>
                             {% endfor %}
@@ -74,7 +74,7 @@
                                 <td>{{asset_total|intcomma}}</td>
                             </tr>
                         </tbody>
-                    </table>
+                    </table> -->
 
                 <table class="table align-middle table-row-dashed fs-6 gy-5 dataTable no-footer"
                     id="kt_customers_table">
@@ -88,7 +88,6 @@
                         <tr>
                             <td><a href="{% url 'ledger_detail' expense.ledger_id %}">{{expense.title}}</a></td>
             
-                            <!--<td>{{expense.title}}</td>-->
                             <td>{{expense.amount|intcomma}}</td>
                         </tr>
                         {% endfor %}
@@ -100,7 +99,7 @@
                     </tbody>
                 </table>
 
-                <table class="table align-middle table-row-dashed fs-6 gy-5 dataTable no-footer" id="kt_customers_table">
+                <!-- <table class="table align-middle table-row-dashed fs-6 gy-5 dataTable no-footer" id="kt_customers_table">
                     <thead class="bg-secondary">
                         <th class="col-7">Liabilities</th>
                         <th>Amount</th>
@@ -111,7 +110,6 @@
                         <tr>
                             <td><a href="{% url 'ledger_detail' liability.ledger_id %}">{{liability.title}}</a></td>
             
-                            <!--<td>{{liability.title}}</td>-->
                             <td>{{liability.amount|intcomma}}</td>
                         </tr>
                         {% endfor %}
@@ -121,7 +119,7 @@
                             <td>{{liability_total|intcomma}}</td>
                         </tr>
                     </tbody>
-                </table>
+                </table> -->
             </div>
             {%if object_list%}
             {% include 'pagination.html' %}

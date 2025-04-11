@@ -245,21 +245,6 @@ def give_detail(from_date, to_date):
                                             }
 
                                     ledger_dict[ledger.ledger_name] = context
-                    # if ledger.ledger_name not in ledger_dict:
-                    #     if CumulativeLedger.objects.filter(ledger = ledger, total_value__gt=0).exists():
-                    #             context = {'account_type': ledger.account_chart.account_type, 
-                    #                     'ledger': ledger.ledger_name, 
-                    #                     'group': ledger.account_chart.group, 
-                    #                     'id': ledger.id, 
-                    #                     'opening': before_transactions.filter(ledger_name=ledger.ledger_name).last().total_value if before_transactions.filter(ledger_name=ledger.ledger_name) else 0, 
-                    #                     #   'opening': ledgers_for_closing.filter(ledger_name=ledger.ledger_name).last().total_value if ledgers_for_closing.filter(ledger_name=ledger.ledger_name) else 0,
-                    #                     'subledgers': [], 
-                    #                     'credit': 0, 
-                    #                     'debit': 0, 
-                    #                     'closing': before_transactions.filter(ledger_name=ledger.ledger_name).last().total_value if before_transactions.filter(ledger_name=ledger.ledger_name) else 0}
-                    #                     # 'closing': ledgers_for_closing.filter(ledger_name=ledger.ledger_name).last().total_value if ledgers_for_closing.filter(ledger_name=ledger.ledger_name) else 0}
-
-                    #             ledger_dict[ledger.ledger_name] = context
                                 
                                 
                # Convert the dictionary values to a list

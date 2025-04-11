@@ -255,7 +255,7 @@ class ProductPurchaseCreateView(IsAdminMixin, CreateView):
                 ledger = AccountLedger.objects.get(id=ledger_id)
                 # print(ledger)
                 try:
-                    prod = Product.objects.create(category=category, title=k, is_taxable=is_taxable, price=rate, ledger=ledger)
+                    prod = Product.objects.create(category=category, title=k, is_taxable=is_taxable, price=rate, ledger=ledger,is_billing_item=False)
                 except IntegrityError:
                     prod = Product.objects.get(title__iexact=k)
                 self.create_subledgers(prod, item_total, ledger_id)
@@ -527,6 +527,14 @@ class AssetPurchaseCreate(IsAdminMixin, CreateView):
         amount_in_words = request.POST.get('amount_in_words')
         payment_mode = request.POST.get('payment_mode')
         debit_account = request.POST.get('debit_account', None)
+        
+        entry_date=bill_date
+        if entry_date:
+
+            entry_datetime_for_cumulativeledger = change_date_to_datetime(entry_date)
+        else:
+            from datetime import datetime
+            entry_datetime_for_cumulativeledger = datetime.now()
 
 
         vendor=None
@@ -588,28 +596,29 @@ class AssetPurchaseCreate(IsAdminMixin, CreateView):
 
             try:
                 sub_led = AccountSubLedger.objects.get(sub_ledger_name=f"{asset.title} Depreciation",ledger=depn_ledger)
-                prev_value = subled.total_value
+                prev_value = sub_led.total_value
                 subledgertracking = AccountSubLedgerTracking.objects.create(subledger = subled, prev_amount= subled.total_value)
 
                 sub_led.total_value += depreciation_amount
                 sub_led.save()
 
-                subledgertracking.new_amount=subled.total_value
-                subledgertracking.value_changed = subled.total_value - prev_value
+                subledgertracking.new_amount=sub_led.total_value
+                subledgertracking.value_changed = sub_led.total_value - prev_value
                 subledgertracking.save()
             except AccountSubLedger.DoesNotExist:
                 subledger = AccountSubLedger.objects.create(sub_ledger_name=f"{asset.title} Depreciation",ledger=depn_ledger,total_value=depreciation_amount)
-                subledgertracking = AccountSubLedgerTracking.objects.create(subledger=subledger, new_amount=decimal.Decimal(net_amount), value_changed=decimal.Decimal(net_amount))
+                subledgertracking = AccountSubLedgerTracking.objects.create(subledger=subledger, new_amount=decimal.Decimal(depreciation_amount), value_changed=decimal.Decimal(depreciation_amount))
 
             depn_ledger.total_value += depreciation_amount
             total_depreciation_amount+= depreciation_amount
             depn_ledger.save()
+            update_cumulative_ledger_bill(depn_ledger, entry_datetime_for_cumulativeledger)
 
         if payment_mode != 'Credit':
             if debit_account:
                 try:
                     credit_ledger = AccountLedger.objects.get(ledger_name='Cash-In-Hand')
-                    journal_entry = TblJournalEntry.objects.create(employee_name=request.user.username)
+                    journal_entry = TblJournalEntry.objects.create(employee_name=request.user.username, entry_date=entry_date,journal_total = grand_total)
 
                     grand_total = decimal.Decimal(grand_total)
                     tax_amt = decimal.Decimal(tax_amount)
@@ -620,14 +629,18 @@ class AssetPurchaseCreate(IsAdminMixin, CreateView):
                         vat_receivable =  AccountLedger.objects.get(ledger_name='VAT Receivable')
                         vat_receivable.total_value += tax_amt
                         vat_receivable.save()
+                        update_cumulative_ledger_bill(vat_receivable, entry_datetime_for_cumulativeledger)
                         TblDrJournalEntry.objects.create(ledger=vat_receivable, journal_entry=journal_entry, particulars=f'Vat receivable from {bill_no}', debit_amount=tax_amt)
 
                     TblDrJournalEntry.objects.create(ledger=debit_ledger, journal_entry=journal_entry, particulars=f'Debit from bill {bill_no}', debit_amount=total_debit_amt)
                     debit_ledger.total_value += total_debit_amt
                     debit_ledger.save()
+                    update_cumulative_ledger_bill(debit_ledger, entry_datetime_for_cumulativeledger)
                     TblCrJournalEntry.objects.create(ledger=credit_ledger, journal_entry=journal_entry,particulars=f'Cash cr. from bill {bill_no}', credit_amount=grand_total)
                     credit_ledger.total_value -= grand_total
                     credit_ledger.save()
+                    update_cumulative_ledger_bill(credit_ledger, entry_datetime_for_cumulativeledger)
+
                     journal_entry.journal_total = total_debit_amt
                     journal_entry.save()
                 except Exception as e:
@@ -641,7 +654,8 @@ class AssetPurchaseCreate(IsAdminMixin, CreateView):
                         account_chart = AccountChart.objects.get(group='Sundry Creditors')
                         credit_ledger = AccountLedger(ledger_name=vendor_name, account_chart=account_chart)
                         credit_ledger.save()
-                        
+                        create_cumulative_ledger_bill(credit_ledger, entry_datetime_for_cumulativeledger)
+
                     credit_ledger = AccountLedger.objects.get(ledger_name=vendor_name)
                     debit_ledger = AccountLedger.objects.get(pk=int(debit_account))
                     journal_entry = TblJournalEntry.objects.create(employee_name=request.user.username)
@@ -655,13 +669,19 @@ class AssetPurchaseCreate(IsAdminMixin, CreateView):
                         vat_receivable =  AccountLedger.objects.get(ledger_name='VAT Receivable')
                         vat_receivable.total_value += tax_amt
                         vat_receivable.save()
+                        update_cumulative_ledger_bill(vat_receivable, entry_datetime_for_cumulativeledger)
+
                         TblDrJournalEntry.objects.create(ledger=vat_receivable, journal_entry=journal_entry, particulars=f'Vat receivable from {bill_no}', debit_amount=tax_amt)
 
                     TblDrJournalEntry.objects.create(ledger=debit_ledger, journal_entry=journal_entry, particulars=f'Debit from bill {bill_no}', debit_amount=total_debit_amt)
                     debit_ledger.total_value += total_debit_amt
+                    update_cumulative_ledger_bill(debit_ledger, entry_datetime_for_cumulativeledger)
+
                     debit_ledger.save()
                     TblCrJournalEntry.objects.create(ledger=credit_ledger, journal_entry=journal_entry,particulars=f'Cash cr. from bill {bill_no}', credit_amount=grand_total)
                     credit_ledger.total_value += grand_total
+                    update_cumulative_ledger_bill(credit_ledger, entry_datetime_for_cumulativeledger)
+
                     credit_ledger.save()
 
                     journal_entry.journal_total = grand_total
@@ -671,6 +691,7 @@ class AssetPurchaseCreate(IsAdminMixin, CreateView):
 
         debit_ledger.total_value -= total_depreciation_amount
         debit_ledger.save()
+        update_cumulative_ledger_bill(debit_ledger, entry_datetime_for_cumulativeledger)
 
         return redirect('/asset/')
     
